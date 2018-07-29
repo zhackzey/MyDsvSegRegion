@@ -245,7 +245,7 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 					if (lpr<0.2) continue;
 
 					if (!gmtar.lab[yy*gmtar.wid + xx]) {
-						//lab��û�б�����
+						//lab还没有被设置
 						if (gmtmp.demgnum[y*gmtmp.wid + x]) {
 							gmtar.demg[yy*gmtar.wid + xx] = gmtmp.demg[y*gmtmp.wid + x];
 							gmtar.demgnum[yy*gmtar.wid + xx] = gmtmp.demgnum[y*gmtmp.wid + x];
@@ -259,7 +259,7 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 						gmtar.lpr[yy*gmtar.wid + xx] = gmtmp.lpr[y*gmtmp.wid + x] * fac;
 					}
 					else if (gmtar.lpr[yy*gmtar.wid + xx]<(gmtmp.lpr[y*gmtmp.wid + x] * fac)) {
-						//ȡ���ʴ�ĸ�ֵ
+						//取概率大的赋值
 						if (gmtmp.demgnum[y*gmtmp.wid + x]) {
 							gmtar.demg[yy*gmtar.wid + xx] = gmtmp.demg[y*gmtmp.wid + x];
 							gmtar.demgnum[yy*gmtar.wid + xx] = gmtmp.demgnum[y*gmtmp.wid + x];
@@ -271,12 +271,12 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 						}
 
 						if (gmtar.lab[yy*gmtar.wid + xx] == gmtmp.lab[y*gmtmp.wid + x]) {
-							//�������lab��ͬ����������,1.2Ϊ����ϵ��
+							//如果两个lab相同，概率增加,1.2为经验系数
 							//							gmtar.lpr[yy*gmtar.wid+xx]=min(1.0,gmtar.lpr[yy*gmtar.wid+xx]+gmtmp.lpr[y*gmtmp.wid+x]*fac);
 							gmtar.lpr[yy*gmtar.wid + xx] = gmtmp.lpr[y*gmtmp.wid + x] * fac*1.2;
 						}
 						else {
-							//�������lab����ͬ�����ʽ���,0.8Ϊ����ϵ��
+							//如果两个lab不相同，概率降低,0.8为经验系数
 							gmtar.lab[yy*gmtar.wid + xx] = gmtmp.lab[y*gmtmp.wid + x];
 							gmtar.lpr[yy*gmtar.wid + xx] = gmtmp.lpr[y*gmtmp.wid + x] * fac*0.8;
 						}
@@ -433,7 +433,7 @@ void GenerateLocDem(DMAP &loc)
 			if (!loc.demgnum[y*loc.wid + x] && !loc.demhnum[y*loc.wid + x])
 				continue;
 			else if (loc.demgnum[y*loc.wid + x] && !loc.demhnum[y*loc.wid + x]) {
-				//��ͨ������
+				//可通行区域
 				loc.lab[y*loc.wid + x] = TRAVESABLE;
 			}
 			else if (!loc.demgnum[y*loc.wid + x] && loc.demhnum[y*loc.wid + x]) {
@@ -452,28 +452,28 @@ void GenerateLocDem(DMAP &loc)
 					if (gz != INVALIDDOUBLE) break;
 				}
 				if (loc.demhmin[y*loc.wid + x] >= gz - POSOBSMINHEIGHT && loc.demhmax[y*loc.wid + x] <= gz + POSOBSMINHEIGHT) {
-					//��ͨ������
+					//可通行区域
 					loc.lab[y*loc.wid + x] = TRAVESABLE;
 				}
 				else {
-					//����ͨ������
+					//不可通行区域
 					loc.lab[y*loc.wid + x] = NONTRAVESABLE;
 				}
 			}
 			else if (loc.demgnum[y*loc.wid + x] && loc.demhnum[y*loc.wid + x]) {
 				double dd = loc.demhmin[y*loc.wid + x] - loc.demg[y*loc.wid + x];
 				if (dd>3.0) {			//larger than vehicle height
-										//�������ͨ��
+										//悬浮物、可通行
 					loc.lab[y*loc.wid + x] = TRAVESABLE;
 				}
 				else {
 					dd = loc.demhmax[y*loc.wid + x] - loc.demg[y*loc.wid + x];
 					if (dd<POSOBSMINHEIGHT) {
-						//��ͨ������
+						//可通行区域
 						loc.lab[y*loc.wid + x] = TRAVESABLE;
 					}
 					else {
-						//����ͨ������
+						//不可通行区域
 						loc.lab[y*loc.wid + x] = NONTRAVESABLE;
 					}
 				}

@@ -57,11 +57,11 @@ void DrawRangeView()
 
 void GenerateRangeView()
 {
-	memset(rm.pts, 0, sizeof(point3fi)*rm.wid*rm.len);	//����ͼ���Ӧ�ļ��������
+	memset(rm.pts, 0, sizeof(point3fi)*rm.wid*rm.len);	//距离图像对应的激光点阵列
 	memset(rm.idx, 0, sizeof(point2i)*rm.wid*rm.len);
 	memset(rm.di, 0, sizeof(BYTE)*rm.wid*rm.len);
 
-	//���ɾ���ͼ����Ӧ������
+	//生成距离图像及相应的数据
 	for (int i = 0; i<BKNUM_PER_FRM; i++) {
 		for (int j = 0; j<LINES_PER_BLK; j++) {
 			for (int k = 0; k<PNTS_PER_LINE; k++) {

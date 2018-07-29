@@ -174,7 +174,7 @@ void ProcessOneFrame()
 	}
 
 	//生成可视化距离图像处理结果
-	//	DrawRangeView ();
+		DrawRangeView ();
 
 	//将全局DEM转换到当前车体坐标系下
 	PredictGloDem(gm, ggm);
@@ -270,6 +270,7 @@ void DoProcessing()
 		llPow = 4294967296; //(LONGLONG)pow(2,32);
 		llSize = dwSizeHigh * llPow + dwSizeLow; //可能是大于4G的怪物
 		dFrmNum = llSize / 180 / dsbytesiz;
+		printf("Total Frame Number is %d\n", dFrmNum);
 	}
 
 	SetFilePointer(dfp, 0, 0, FILE_BEGIN);
@@ -299,13 +300,13 @@ void DoProcessing()
 		ProcessOneFrame();
 
 		//可视化
-		//		cvResize (rm.rMap, col);
+				cvResize (rm.rMap, col);
 		char str[10];
 		sprintf(str, "Fno%d", dFrmNo);
 		cvPutText(dm.lmap, str, cvPoint(50, 50), &font, CV_RGB(0, 0, 255));
-		//		cvShowImage("range image",col);
-		//		cvResize (rm.lMap, col);
-		//		cvShowImage("region",col);
+				cvShowImage("range image",col);
+				cvResize (rm.lMap, col);
+				cvShowImage("region",col);
 		if (dm.lmap) cvShowImage("ldemlab", dm.lmap);
 		if (gm.lmap) cvShowImage("gdemlab", gm.lmap);
 		if (gm.smap) cvShowImage("gsublab", gm.smap);

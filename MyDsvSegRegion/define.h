@@ -50,6 +50,12 @@ struct point3d
 
 typedef double  MATRIX[3][3];
 
+/*
+ * 3D 的车辆轨迹信息
+ * ang 角度
+ * shv 位移
+ * rot 用于坐标系变换
+ */
 typedef struct {
 	point3d			ang;
 	point3d			shv;
@@ -58,6 +64,11 @@ typedef struct {
 
 typedef double  MAT2D[2][2];
 
+/*
+ * 2D 的车辆轨迹信息
+ * ang 角度
+ * rot 用于坐标变换
+ */
 typedef struct {
 	double			ang;
 	point2d			shv;
@@ -71,9 +82,9 @@ typedef struct {
 #define	SCANDATASIZE		(BKNUM_PER_FRM*LINES_PER_BLK/2)
 
 //for vel64
-//HORIERRFACTOR=tan��ˮƽ�Ƿֱ���=0.1�ȣ�*���Ŵ�ϵ��=2.0��=0.0018*5
+//HORIERRFACTOR=tan（水平角分辨率=0.1度）*（放大系数=2.0）=0.0018*5
 #define	HORIERRFACTOR	0.02	//0.006
-//VERTERRFACTOR=tan����ֱ�Ƿֱ���=0.38�ȣ�*���Ŵ�ϵ��=1.5��=0.0067*5
+//VERTERRFACTOR=tan（垂直角分辨率=0.38度）*（放大系数=1.5）=0.0067*5
 #define	VERTERRFACTOR	0.035	//0.035
 #define	BASEERROR		0.3
 #define	MAXSMOOTHERR	1.0
@@ -87,18 +98,27 @@ typedef struct {
 
 typedef struct {
 	float			x, y, z;
-	u_char			i;
+	u_char			i;		//反射率
 } point3fi;
 
 typedef struct {
 	int x, y;
 } point2i;
 
+/*
+ * 一个VDN数据里有32*12个激光点
+ * 每个激光点包含的三维坐标x,y,z和一个i
+ */
 typedef struct {
 	long			millisec;
 	point3fi		points[PTNUM_PER_BLK];
 } ONEVDNDATA;
 
+/*
+ * 一个DSV数据结构体里有32*12个激光点
+ * 其实是在VDN数据的基础上加入了车辆位置信息
+ * ONEDSVDATA = TRANSINFO + ONEVDNDATA
+ */
 typedef struct {
 	point3d			ang;
 	point3d			shv;
@@ -107,6 +127,10 @@ typedef struct {
 	MATRIX			rot;
 } ONEDSVDATA;
 
+/*
+ * 一帧DSV数据 包含580 个DSV数据块
+ * 直接是一个ONEDSVDATA 数据块的数组
+ */
 typedef struct {
 	ONEDSVDATA		dsv[BKNUM_PER_FRM];
 } ONEDSVFRAME;
@@ -128,24 +152,25 @@ typedef	struct {
 #define	VMAXANG		(2.432*M_PI/180.0)
 
 typedef struct {
-	int				wid;
-	int				len;
-	double			h0;
-	double			v0;
-	double			hres;
-	double			vres;
-	point3fi		*pts;
-	point2i			*idx;
+	int				wid;	//距离图像的长，实际长LINES_PER_BLK*BKNUM_PER_FRM/2;	
+							//为减少计算量，实际长/2
+	int				len;	//距离图像的宽，64
+	double			h0;		//水平零位角
+	double			v0;		//垂直零位角
+	double			hres;	//水平角解像度
+	double			vres;	//垂直角解像度
+	point3fi		*pts;	//每个像素对应的激光点（CorrectPoints后）
+	point2i			*idx;	//每个像素对应的激光点扫描序号
 	BYTE			*di;		//for data alignment only
-	int				*regionID;
-	int				regnum;
-	SEGBUF			*segbuf;
-	IplImage		*rMap;
-	IplImage		*lMap;
+	int				*regionID;	//每个像素点对应到区域编号
+	int				regnum;		//总区域数
+	SEGBUF			*segbuf;	//每个区域数据块
+	IplImage		*rMap;		//可视化距离图像用
+	IplImage		*lMap;		//可视化分割结果用
 } RMAP;
 
-#define	WIDSIZ		120.0
-#define	LENSIZ		200.0
+#define	WIDSIZ		120.0		//DEM宽、单位：米
+#define	LENSIZ		200.0		//DEM长、单位：米
 #define	PIXSIZ		0.25
 #define	POSOBSMINHEIGHT	0.6		//0.6m
 #define	VEHICLEHEIGHT	3.0		//3.0m
@@ -153,32 +178,40 @@ typedef struct {
 
 
 typedef struct {
-	int			x0, x1;		//DEM�еĵ���㿪ʼ�ͽ����������[0,dm.wid)
-							//	int			y;			//DEM�е��������[0,dm.len)
-	double		h;			//���ĵ�λ�ã�(x0+x1)/2))�ĵ���߶�
-	double		dl;			//�������y���ĵ���ɨ������ǰһ��ɨ���߼������ˮƽ����
-							//��ǰһ��ɨ����Ϊ�복���������������ɨ���߼�Ƕ�d_ang=(VMAXANG-VMINANG)/63)
+	int			x0, x1;		//DEM中的地面点开始和结束像素序号[0,dm.wid)
+							//	int			y;			//DEM中的像素序号[0,dm.len)
+	double		h;			//中心点位置（(x0+x1)/2))的地面高度
+	double		dl;			//纵向距离y处的地面扫描线与前一条扫描线间的正常水平距离
+							//（前一条扫描线为与车体更近的那条，两扫描线间角度d_ang=(VMAXANG-VMINANG)/63)
 } CENTERLN;
 
 typedef struct {
-	int				wid;
-	int				len;
+	int				wid;			//DEM宽、像素数
+	int				len;			//DEM长、像素数
 	double			*demg;			//ground
 	int				*demgnum;
-	double			*demhmin;		//non-ground
-	double			*demhmax;		//non-ground
-	int				*demhnum;
-	BYTE			*lab;
-	double			*groll;
-	double			*gpitch;
-	BYTE			*sublab;
-	double			*lpr;			//probability of the lab
-	double			*WX, *WY, *WZ;
-	CENTERLN		*centerln;
-	IplImage		*lmap;
-	IplImage		*smap;
-	TRANS2D			trans;
+	double			*demhmin;		//非地面DEM最低高度
+	double			*demhmax;		//非地面DEM最高高度
+	int				*demhnum;		//落入该栅格中的非地面点数目
+	BYTE			*lab;			//每个像素点对应的标签、包括TRAVESABLE、NONTRAVESABLE
+	double			*groll;			//该像素邻域平面拟合的横滚角
+	double			*gpitch;		//该像素邻域平面拟合的俯仰角
+	BYTE			*sublab;		//路面附近像素的对应的子标签
+									//TRAVESABLE包括：FLATGROUND、DOWNSLOPE、UPSLOPE、
+									//LEFTSIDESLOPE、RIGHTSIDESLOPE、EDGEPOINTS
+									// NONTRAVESABLE包括：POSSIOBSTA、NEGATOBSTA
+
+	double			*lpr;			//probability of the lab 为该属性的概率
+	double			*WX, *WY, *WZ;	//用于地面拟合的临时buffer
+	CENTERLN		*centerln;		//道路中心线信息、辅助用，不准确
+	IplImage		*lmap;			//可视化用
+	IplImage		*smap;			//可视化用
+	TRANS2D			trans;			//该DEM的车体位姿，对应于每一帧第0个block
 	bool			dataon;
+
+	/*
+	 * 一下部分是新加入的
+	 */
 } DMAP;
 
 #define UNKNOWN			0
