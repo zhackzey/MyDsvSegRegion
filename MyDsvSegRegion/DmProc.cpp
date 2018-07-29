@@ -161,6 +161,23 @@ void CopyGloDem(DMAP *tar, DMAP *src)
 	if (!tar->heightVariance) tar->heightVariance = new double[tar->wid*tar->len];
 	memcpy(tar->heightVariance, src->heightVariance, sizeof(double)*src->wid*src->len);
 
+	if (!tar->ptsHeight) tar->ptsHeight = new double *[tar->wid*tar->len];
+	for (int i = 0; i < tar->wid*tar->len; ++i)
+	{
+		tar->ptsHeight[i] = new double[MAX_PTS_PER_GRID];
+		if (!tar->ptsHeight[i])
+			printf("No memory\n");
+		memset(tar->ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+	}
+	for (int i = 0; i < tar->wid*tar->len; ++i)
+	{
+		for (int j = 0; j < src->demnum[i]; ++j)
+			tar->ptsHeight[i][j] = src->ptsHeight[i][j];
+	}
+
+	if (!tar->demnum) tar->demnum = new int[tar->wid*tar->len];
+	memcpy(tar->demnum, src->demnum, sizeof(int)*src->wid*src->len);
+
 	if (!tar->visible) tar->visible = new bool[tar->wid*tar->len];
 	memcpy(tar->visible, src->visible, sizeof(bool)*src->wid*src->len);
 }
@@ -453,7 +470,10 @@ void GenerateLocDem(DMAP &loc)
 	for (int i = 0; i < loc.wid*loc.len; ++i)
 	{
 		loc.ptsHeight[i] = new double[MAX_PTS_PER_GRID];
-		memset(&loc.ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+		if (!loc.ptsHeight[i])
+			printf("No memory\n");
+		memset(loc.ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+
 	}
 	if (!loc.heightVariance) loc.heightVariance = new double[loc.wid*loc.len];
 	memset(loc.heightVariance, 0, sizeof(double)*loc.wid*loc.len);
@@ -1044,3 +1064,28 @@ void ExtractRoadCenterline(DMAP &glo)
 	}
 }
 
+void SaveDEM(DMAP & dm,int FrNum,int ToFrNum)
+{
+	IplImage* saveImage = cvCreateImage(cvSize(dm.wid, dm.len), IPL_DEPTH_64F, 3);
+
+	cvZero(saveImage);
+
+	int x, y;
+	for(y=0;y<dm.len;++y)
+		for (x = 0; x < dm.wid; ++x)
+		{
+			//第一个通道存mean height
+			saveImage->imageData[(y*dm.wid + x) * 3] = dm.meanHeight[y*dm.wid + x];
+			//第二个通道存heigth variance
+			saveImage->imageData[(y*dm.wid + x) * 3 + 1] = dm.heightVariance[y*dm.wid + x];
+			//第三个通道存可见度
+			saveImage->imageData[(y*dm.wid + x) * 3 + 2] = dm.visible[y*dm.wid + x];
+		}
+	char filename[60];
+	Mat src;
+	src = cvarrToMat(saveImage);
+	sprintf(filename, "E:\\Data\\dem-%.6d-of-%.6d.jpg", FrNum, ToFrNum);
+	//cvSaveImage(filename, saveImage);
+	imwrite(filename, src);
+	cvReleaseImage(&saveImage);
+}

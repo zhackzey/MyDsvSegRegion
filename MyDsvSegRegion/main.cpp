@@ -174,32 +174,33 @@ void ProcessOneFrame()
 	}
 
 	//生成可视化距离图像处理结果
-		DrawRangeView ();
+	//DrawRangeView ();
 
 	//将全局DEM转换到当前车体坐标系下
 	PredictGloDem(gm, ggm);
-
+	printf("PredictGloDem completed\n");
 	//生成单帧数据的DEM
 	GenerateLocDem(dm);
+	printf("GenerateLocDem completed\n");
 
 	//用当前帧DEM更新全局DEM
-	UpdateGloDem(gm, dm);
-
+	//UpdateGloDem(gm, dm);
+	
 	//提取道路中心线
-	ExtractRoadCenterline(gm);
+	//ExtractRoadCenterline(gm);
 
 	//计算地面俯仰和横滚角，分类地形
-	LabelRoadSurface(gm);
+	//LabelRoadSurface(gm);
 
 	//提取路面上的障碍物
-	LabelObstacle(gm);
+	//LabelObstacle(gm);
 
 	//生成可视化单帧数据DEM
-	DrawDem(dm);
+	//DrawDem(dm);
 
 	//生成可视化全局DEM
-	DrawDem(gm);
-
+	//DrawDem(gm);
+	
 	if (rm.segbuf)
 		delete[]rm.segbuf;
 
@@ -299,14 +300,16 @@ void DoProcessing()
 		//每一帧的处理
 		ProcessOneFrame();
 
+		SaveDEM(dm, dFrmNo, dFrmNum);
 		//可视化
-				cvResize (rm.rMap, col);
+		//		cvResize (rm.rMap, col);
 		char str[10];
 		sprintf(str, "Fno%d", dFrmNo);
 		cvPutText(dm.lmap, str, cvPoint(50, 50), &font, CV_RGB(0, 0, 255));
-				cvShowImage("range image",col);
-				cvResize (rm.lMap, col);
-				cvShowImage("region",col);
+		//		cvShowImage("range image",col);
+		//		cvResize (rm.lMap, col);
+		//		cvShowImage("region",col);
+		/*
 		if (dm.lmap) cvShowImage("ldemlab", dm.lmap);
 		if (gm.lmap) cvShowImage("gdemlab", gm.lmap);
 		if (gm.smap) cvShowImage("gsublab", gm.smap);
@@ -323,6 +326,7 @@ void DoProcessing()
 			else
 				waitkeydelay = 1;
 		}
+		*/
 		dFrmNo++;
 	}
 
@@ -366,7 +370,7 @@ void main(int argc, char *argv[])
 
 	CloseHandle(dfp);
 
-	//	system("pause");
+	system("pause");
 	exit(1);
 }
 
