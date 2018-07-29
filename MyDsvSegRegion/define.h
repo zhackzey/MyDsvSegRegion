@@ -184,7 +184,8 @@ typedef struct {
 	double		dl;			//纵向距离y处的地面扫描线与前一条扫描线间的正常水平距离
 							//（前一条扫描线为与车体更近的那条，两扫描线间角度d_ang=(VMAXANG-VMINANG)/63)
 } CENTERLN;
-
+/*以下部分处理新加入的features*/
+#define MAX_PTS_PER_GRID 4000
 typedef struct {
 	int				wid;			//DEM宽、像素数
 	int				len;			//DEM长、像素数
@@ -210,8 +211,14 @@ typedef struct {
 	bool			dataon;
 
 	/*
-	 * 一下部分是新加入的
+	 * 一下部分是新加入的feature
 	 */
+
+	double			*meanHeight;	// 每一个栅格的平均高度
+	double			**ptsHeight;	// 用于存储打在每一个栅格中的激光点的高度序列
+	double			*heightVariance;// 每一个栅格的方差
+	int				*demnum;		// 每一个栅格的激光点数
+	bool			*visible;		// 可见性（待定）
 } DMAP;
 
 #define UNKNOWN			0

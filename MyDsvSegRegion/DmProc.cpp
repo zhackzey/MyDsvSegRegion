@@ -153,6 +153,16 @@ void CopyGloDem(DMAP *tar, DMAP *src)
 
 	tar->trans = src->trans;
 	tar->dataon = true;
+
+	/*以下部分处理新加入的features*/
+	if (!tar->meanHeight) tar->meanHeight = new double[tar->wid*tar->len];
+	memcpy(tar->meanHeight, src->meanHeight, sizeof(double)*src->wid*src->len);
+
+	if (!tar->heightVariance) tar->heightVariance = new double[tar->wid*tar->len];
+	memcpy(tar->heightVariance, src->heightVariance, sizeof(double)*src->wid*src->len);
+
+	if (!tar->visible) tar->visible = new bool[tar->wid*tar->len];
+	memcpy(tar->visible, src->visible, sizeof(bool)*src->wid*src->len);
 }
 
 void ZeroGloDem(DMAP *m)
@@ -167,6 +177,11 @@ void ZeroGloDem(DMAP *m)
 	memset(m->demhnum, 0, sizeof(int)*m->wid*m->len);
 	memset(m->lab, 0, sizeof(BYTE)*m->wid*m->len);
 	memset(m->lpr, 0, sizeof(double)*m->wid*m->len);
+	
+	/*以下部分处理新加入的features*/
+	memset(m->meanHeight, 0, sizeof(double)*m->wid*m->len);
+	memset(m->heightVariance, 0, sizeof(double)*m->wid*m->len);
+	memset(m->visible, 0, sizeof(bool)*m->wid*m->len);
 }
 
 void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
@@ -249,14 +264,23 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 						if (gmtmp.demgnum[y*gmtmp.wid + x]) {
 							gmtar.demg[yy*gmtar.wid + xx] = gmtmp.demg[y*gmtmp.wid + x];
 							gmtar.demgnum[yy*gmtar.wid + xx] = gmtmp.demgnum[y*gmtmp.wid + x];
+
 						}
 						if (gmtmp.demhnum[y*gmtmp.wid + x]) {
 							gmtar.demhmin[yy*gmtar.wid + xx] = gmtmp.demhmin[y*gmtmp.wid + x];
 							gmtar.demhmax[yy*gmtar.wid + xx] = gmtmp.demhmax[y*gmtmp.wid + x];
 							gmtar.demhnum[yy*gmtar.wid + xx] = gmtmp.demhnum[y*gmtmp.wid + x];
 						}
+
 						gmtar.lab[yy*gmtar.wid + xx] = gmtmp.lab[y*gmtmp.wid + x];
 						gmtar.lpr[yy*gmtar.wid + xx] = gmtmp.lpr[y*gmtmp.wid + x] * fac;
+						/*以下部分处理新加入的features*/
+						gmtar.demnum[yy*gmtar.wid + xx] = gmtmp.demnum[y*gmtmp.wid + x];
+						gmtar.meanHeight[yy*gmtar.wid + xx] = gmtmp.meanHeight[y*gmtmp.wid + x];
+						gmtar.heightVariance[yy*gmtar.wid + xx] = gmtmp.heightVariance[y*gmtmp.wid + x];
+						gmtar.visible[yy*gmtar.wid + xx] = gmtmp.visible[y*gmtmp.wid + x];
+						for (int i = 0; i<gmtar.demnum[yy*gmtar.wid + xx]; ++i)
+							gmtar.ptsHeight[yy*gmtar.wid + xx][i] = gmtmp.ptsHeight[y*gmtmp.wid + x][i];
 					}
 					else if (gmtar.lpr[yy*gmtar.wid + xx]<(gmtmp.lpr[y*gmtmp.wid + x] * fac)) {
 						//取概率大的赋值
@@ -269,6 +293,13 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 							gmtar.demhmax[yy*gmtar.wid + xx] = gmtmp.demhmax[y*gmtmp.wid + x];
 							gmtar.demhnum[yy*gmtar.wid + xx] = gmtmp.demhnum[y*gmtmp.wid + x];
 						}
+						/*以下部分处理新加入的features*/
+						gmtar.demnum[yy*gmtar.wid + xx] = gmtmp.demnum[y*gmtmp.wid + x];
+						gmtar.meanHeight[yy*gmtar.wid + xx] = gmtmp.meanHeight[y*gmtmp.wid + x];
+						gmtar.heightVariance[yy*gmtar.wid + xx] = gmtmp.heightVariance[y*gmtmp.wid + x];
+						gmtar.visible[yy*gmtar.wid + xx] = gmtmp.visible[y*gmtmp.wid + x];
+						for (int i = 0; i<gmtar.demnum[yy*gmtar.wid + xx]; ++i)
+							gmtar.ptsHeight[yy*gmtar.wid + xx][i] = gmtmp.ptsHeight[y*gmtmp.wid + x][i];
 
 						if (gmtar.lab[yy*gmtar.wid + xx] == gmtmp.lab[y*gmtmp.wid + x]) {
 							//如果两个lab相同，概率增加,1.2为经验系数
@@ -286,7 +317,6 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 		}
 	}
 }
-
 
 void UpdateGloDem(DMAP &glo, DMAP &loc)
 {
@@ -323,7 +353,7 @@ void UpdateGloDem(DMAP &glo, DMAP &loc)
 					glo.lpr[gy*glo.wid + gx] = loc.lpr[dy*loc.wid + dx];
 				}
 			}
-			//9999�����ޣ��Է���ʱ�䳵����ֹʱ���
+			//9999的上限，以防长时间车辆静止时溢出
 			if (glo.demgnum[gy*glo.wid + gx] && loc.demgnum[dy*loc.wid + dx]) {
 				glo.demg[gy*glo.wid + gx] = (glo.demg[gy*glo.wid + gx] * glo.demgnum[gy*glo.wid + gx] +
 					loc.demg[dy*loc.wid + dx] * loc.demgnum[dy*loc.wid + dx]) /
@@ -344,6 +374,54 @@ void UpdateGloDem(DMAP &glo, DMAP &loc)
 				glo.demhmin[gy*glo.wid + gx] = loc.demhmin[dy*loc.wid + dx];
 				glo.demhmax[gy*glo.wid + gx] = loc.demhmax[dy*loc.wid + dx];
 				glo.demhnum[gy*glo.wid + gx] = loc.demhnum[dy*loc.wid + dx];
+			}
+			/*以下部分处理新加入的features*/
+			if (glo.demnum[gy*glo.wid + gx] && loc.demnum[dy*loc.wid + dx]) // 两个dem都有激光点打在这个栅格
+			{
+				/*
+				glo.meanHeight[gy*glo.wid + gx] = (glo.meanHeight[gy*glo.wid + gx] * glo.demnum[gy*glo.wid + gx] +
+					loc.meanHeight[dy*loc.wid + dx] * loc.demnum[dy*loc.wid + dx]) /
+					(double)(glo.demnum[gy*glo.wid + gx] + loc.demnum[dy*loc.wid + dx]);
+				*/
+				int tmp = glo.demgnum[gy*glo.wid + gx];
+				glo.demnum[gy*glo.wid + gx] = min(MAX_PTS_PER_GRID, glo.demnum[gy*glo.wid + gx] + loc.demnum[dy*loc.wid + dx]);
+				
+				double *pts = new double[glo.demnum[gy*glo.wid + gx]];
+				int i;
+				for (i = 0; i <tmp; ++i)
+					pts[i] = glo.ptsHeight[gy*glo.wid + gx][i];
+				//两帧dem的激光点数据已经超过了最大容量，那么保留loc，从glo中截取一段填入
+				for (i = 0; i < loc.demnum[dy*loc.wid + dx]; ++i)
+				{
+					glo.ptsHeight[gy*glo.wid + gx][i] = loc.ptsHeight[dy *loc.wid + dx][i];
+				}
+				for (i = loc.demnum[dy*loc.wid + dx]; i < glo.demnum[gy*glo.wid + gx]; ++i)
+				{
+					glo.ptsHeight[gy*glo.wid + gx][i] = pts[i-loc.demnum[dy*loc.wid + dx]];
+				}
+
+				//把两帧dem同一栅格的激光点高度融合求方差
+				double variance = 0;
+				double meanheight = 0;
+				for (int i = 0; i < glo.demnum[gy*glo.wid + gx]; ++i)
+				{
+					meanheight += glo.ptsHeight[gy*glo.wid + gx][i];
+					variance += (glo.ptsHeight[gy*glo.wid + gx][i] - glo.meanHeight[gy*glo.wid + gx]) *(glo.ptsHeight[gy*glo.wid + gx][i] - glo.meanHeight[gy*glo.wid + gx]);
+				}
+				meanheight /= (double)glo.demnum[gy*glo.wid + gx];
+				variance /= (double)glo.demnum[gy*glo.wid + gx];
+				
+				glo.meanHeight[gy*glo.wid + gx] = meanheight;
+				glo.heightVariance[gy*glo.wid + gx] = variance;
+				
+				glo.visible[gy*glo.wid + gx] = 1;
+			}
+			else if (loc.demnum[dy*loc.wid + dx]) {
+				glo.meanHeight[gy*glo.wid + gx] = loc.meanHeight[dy*loc.wid + dx];
+				glo.demnum[gy*glo.wid + gx] = loc.demnum[dy*loc.wid + dx];
+				for (int i = 0; i < glo.demnum[gy*glo.wid + gx]; ++i)
+					glo.ptsHeight[gy*glo.wid + gx][i] = loc.ptsHeight[dy*loc.wid + dx][i];
+				glo.visible[gy*glo.wid + gx] = 1;
 			}
 		}
 	}
@@ -367,6 +445,22 @@ void GenerateLocDem(DMAP &loc)
 	memset(loc.lab, 0, sizeof(BYTE)*loc.wid*loc.len);
 	if (!loc.lpr) loc.lpr = new double[loc.wid*loc.len];
 	memset(loc.lpr, 0, sizeof(double)*loc.wid*loc.len);
+
+	/*以下部分处理新加入的features*/
+	if (!loc.meanHeight) loc.meanHeight = new double[loc.wid*loc.len];
+	memset(loc.meanHeight, 0, sizeof(double)*loc.wid*loc.len);
+	if (!loc.ptsHeight) loc.ptsHeight = new double *[loc.wid*loc.len];
+	for (int i = 0; i < loc.wid*loc.len; ++i)
+	{
+		loc.ptsHeight[i] = new double[MAX_PTS_PER_GRID];
+		memset(&loc.ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+	}
+	if (!loc.heightVariance) loc.heightVariance = new double[loc.wid*loc.len];
+	memset(loc.heightVariance, 0, sizeof(double)*loc.wid*loc.len);
+	if (!loc.demnum)	loc.demnum = new int[loc.wid *loc.len];
+	memset(loc.demnum, 0, sizeof(int)*loc.wid*loc.len);
+	if (!loc.visible) loc.visible = new bool[loc.wid*loc.len];
+	memset(loc.visible, 0, sizeof(bool)*loc.wid*loc.len);
 
 	for (int ry = 0; ry<rm.len; ry++) {
 		for (int rx = 0; rx<rm.wid; rx++) {
@@ -401,6 +495,9 @@ void GenerateLocDem(DMAP &loc)
 					if (isroad) {
 						loc.demg[y*loc.wid + x] += p->z;
 						loc.demgnum[y*loc.wid + x] ++;
+						/*以下部分处理新加入的features*/
+						if(loc.demnum[y*loc.wid + x] < MAX_PTS_PER_GRID)
+							loc.demnum[y*loc.wid + x] ++;
 					}
 					else {
 						if (!loc.demhnum[y*loc.wid + x]) {
@@ -411,7 +508,16 @@ void GenerateLocDem(DMAP &loc)
 							loc.demhmax[y*loc.wid + x] = max(loc.demhmax[y*loc.wid + x], (double)p->z);
 						}
 						loc.demhnum[y*loc.wid + x] ++;
+						/*以下部分处理新加入的features*/
+						if(loc.demnum[y*loc.wid + x]<MAX_PTS_PER_GRID)
+							loc.demnum[y*loc.wid + x] ++;
 					}
+					/*以下部分处理新加入的features*/
+					//不区分是否是路面，先把所有在该栅格内的激光点的高度加进去
+					if(loc.demnum[y*loc.wid + x]<=MAX_PTS_PER_GRID)
+						loc.ptsHeight[y*loc.wid + x][loc.demnum[y*loc.wid + x] - 1] = p->z;
+					loc.meanHeight[y*loc.wid + x] += p->z;
+					loc.visible[y*loc.wid + x] = 1;
 				}
 			}
 		}
@@ -419,12 +525,35 @@ void GenerateLocDem(DMAP &loc)
 
 	for (y = 0; y<loc.len; y++) {
 		for (x = 0; x<loc.wid; x++) {
+
 			if (!loc.demgnum[y*loc.wid + x])
 				loc.demg[y*loc.wid + x] = INVALIDDOUBLE;
 			else
 				loc.demg[y*loc.wid + x] /= (double)loc.demgnum[y*loc.wid + x];
 			if (!loc.demhnum[y*loc.wid + x])
 				loc.demhmin[y*loc.wid + x] = loc.demhmax[y*loc.wid + x] = INVALIDDOUBLE;
+
+			/*以下部分处理新加入的features*/
+
+			if (!loc.demnum[y*loc.wid + x])//没有激光点打到这个栅格，那么visible = 0
+			{
+				loc.meanHeight[y*loc.wid + x] = INVALIDDOUBLE;
+				// heightVariance 保持初值0
+			}
+			else
+			{
+				//计算平均高度
+				loc.meanHeight[y*loc.wid + x] /= (double)(loc.demnum[y*loc.wid + x]);
+				//计算方差
+				double variance = 0;
+				for (int i = 0; i < loc.demnum[y*loc.wid + x]; ++i)
+				{
+					variance += (loc.ptsHeight[y*loc.wid + x][i] - loc.meanHeight[y*loc.wid + x]) * (loc.ptsHeight[y*loc.wid + x][i] - loc.meanHeight[y*loc.wid + x]);
+				}
+				variance /= (double)(loc.demnum[y*loc.wid + x]);
+
+				loc.heightVariance[y*loc.wid + x] = variance;
+			}
 		}
 	}
 
@@ -532,6 +661,15 @@ void InitDmap(DMAP *dm)
 	dm->WX = dm->WY = dm->WZ = NULL;
 	dm->centerln = NULL;
 	dm->dataon = false;
+	
+	/*以下部分处理新加入的features*/
+
+	dm->meanHeight = NULL;
+	dm->ptsHeight = NULL;
+	dm->heightVariance = NULL;
+	dm->demnum = NULL;
+	dm->visible = NULL;
+
 }
 
 void ReleaseDmap(DMAP *dm)
@@ -552,6 +690,18 @@ void ReleaseDmap(DMAP *dm)
 	if (dm->WY) delete[]dm->WY;
 	if (dm->WZ) delete[]dm->WZ;
 	if (dm->centerln) delete[]dm->centerln;
+
+	/*以下部分处理新加入的features*/
+	if (dm->meanHeight) delete[] dm->meanHeight;
+	if (dm->ptsHeight)
+	{
+		for (int i = 0; i < dm->wid*dm->len;++i)
+			delete[] dm->ptsHeight[i];
+	}
+	delete[] dm->ptsHeight;
+	if (dm->heightVariance) delete[] dm->heightVariance;
+	if (dm->demnum) delete[]dm->demnum;
+	if (dm->visible) delete[] dm->visible;
 }
 
 #define MAXDEMPTNUM		1000
