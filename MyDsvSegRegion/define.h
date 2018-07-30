@@ -169,8 +169,8 @@ typedef struct {
 	IplImage		*lMap;		//可视化分割结果用
 } RMAP;
 
-#define	WIDSIZ		25 //120.0		//DEM宽、单位：米
-#define	LENSIZ		25 //200.0		//DEM长、单位：米
+#define	WIDSIZ		60 //120.0		//DEM宽、单位：米
+#define	LENSIZ		120 //200.0		//DEM长、单位：米
 #define	PIXSIZ		0.25
 #define	POSOBSMINHEIGHT	0.6		//0.6m
 #define	VEHICLEHEIGHT	3.0		//3.0m
@@ -185,7 +185,8 @@ typedef struct {
 							//（前一条扫描线为与车体更近的那条，两扫描线间角度d_ang=(VMAXANG-VMINANG)/63)
 } CENTERLN;
 /*以下部分处理新加入的features*/
-#define MAX_PTS_PER_GRID 500
+#define MAX_PTS_PER_GRID 2000
+#define PIC_SIZE 200
 typedef struct {
 	int				wid;			//DEM宽、像素数
 	int				len;			//DEM长、像素数

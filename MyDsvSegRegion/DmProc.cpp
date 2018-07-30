@@ -416,7 +416,7 @@ void UpdateGloDem(DMAP &glo, DMAP &loc)
 				{
 					glo.ptsHeight[gy*glo.wid + gx][i] = pts[i-loc.demnum[dy*loc.wid + dx]];
 				}
-
+				delete[] pts;
 				//把两帧dem同一栅格的激光点高度融合求方差
 				double variance = 0;
 				double meanheight = 0;
@@ -466,14 +466,24 @@ void GenerateLocDem(DMAP &loc)
 	/*以下部分处理新加入的features*/
 	if (!loc.meanHeight) loc.meanHeight = new double[loc.wid*loc.len];
 	memset(loc.meanHeight, 0, sizeof(double)*loc.wid*loc.len);
-	if (!loc.ptsHeight) loc.ptsHeight = new double *[loc.wid*loc.len];
-	for (int i = 0; i < loc.wid*loc.len; ++i)
+	if (!loc.ptsHeight)
 	{
-		loc.ptsHeight[i] = new double[MAX_PTS_PER_GRID];
-		if (!loc.ptsHeight[i])
-			printf("No memory\n");
-		memset(loc.ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+		loc.ptsHeight = new double *[loc.wid*loc.len];
+		for (int i = 0; i < loc.wid*loc.len; ++i)
+		{
+			loc.ptsHeight[i] = new double[MAX_PTS_PER_GRID];
+			if (!loc.ptsHeight[i])
+				printf("No memory\n");
+			memset(loc.ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
 
+		}
+	}
+	else
+	{
+		for (int i = 0; i < loc.wid*loc.len; ++i)
+		{
+			memset(loc.ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+		}
 	}
 	if (!loc.heightVariance) loc.heightVariance = new double[loc.wid*loc.len];
 	memset(loc.heightVariance, 0, sizeof(double)*loc.wid*loc.len);
@@ -559,6 +569,8 @@ void GenerateLocDem(DMAP &loc)
 			{
 				loc.meanHeight[y*loc.wid + x] = INVALIDDOUBLE;
 				// heightVariance 保持初值0
+				loc.heightVariance[y*loc.wid + x] = 0;
+				loc.visible[y*loc.wid + x] = 0;
 			}
 			else
 			{
@@ -573,6 +585,7 @@ void GenerateLocDem(DMAP &loc)
 				variance /= (double)(loc.demnum[y*loc.wid + x]);
 
 				loc.heightVariance[y*loc.wid + x] = variance;
+				loc.visible[y*loc.wid + x] = 1;
 			}
 		}
 	}
@@ -1066,20 +1079,41 @@ void ExtractRoadCenterline(DMAP &glo)
 
 void SaveDEM(DMAP & dm,int FrNum,int ToFrNum)
 {
-	IplImage* saveImage = cvCreateImage(cvSize(dm.wid, dm.len), IPL_DEPTH_64F, 3);
+	IplImage* saveImage = cvCreateImage(cvSize(200, 200), IPL_DEPTH_8U, 3);
 
 	cvZero(saveImage);
 
 	int x, y;
-	for(y=0;y<dm.len;++y)
-		for (x = 0; x < dm.wid; ++x)
+	double max_meanHeight = 0;
+	double max_HeightVariance = 0;
+	int x_st = (dm.wid - 200) / 2 ;
+	int x_ed = dm.wid - (dm.wid - 200) / 2 - 1 ;
+	for(y=0;y<200;++y)
+		for (x = x_st; x <=x_ed; ++x)
 		{
-			//第一个通道存mean height
-			saveImage->imageData[(y*dm.wid + x) * 3] = dm.meanHeight[y*dm.wid + x];
-			//第二个通道存heigth variance
-			saveImage->imageData[(y*dm.wid + x) * 3 + 1] = dm.heightVariance[y*dm.wid + x];
-			//第三个通道存可见度
-			saveImage->imageData[(y*dm.wid + x) * 3 + 2] = dm.visible[y*dm.wid + x];
+			if (dm.visible[y*dm.wid + x] && dm.meanHeight[y*dm.wid + x] != INVALIDDOUBLE)
+			{
+				max_meanHeight = max(dm.meanHeight[y*dm.wid + x], max_meanHeight);
+				max_HeightVariance = max(dm.heightVariance[y*dm.wid + x], max_HeightVariance);
+			}
+		}
+	for(y=0;y<200;++y)
+		for (x = x_st; x <=x_ed; ++x)
+		{
+			if (dm.visible[y*dm.wid + x])
+			{	//第一个通道存mean height
+				saveImage->imageData[(y*PIC_SIZE+ x-x_st) * 3] = (int)((dm.meanHeight[y*dm.wid + x] / max_meanHeight) * 255);
+				//第二个通道存heigth variance
+				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 1] = (int)((dm.heightVariance[y*dm.wid + x] / max_HeightVariance) * 255);
+				//第三个通道存可见度
+				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 2] = 255;
+			}
+			else
+			{
+				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3] = 0;
+				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 1] = 0;
+				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 2] = 0;
+			}
 		}
 	char filename[60];
 	Mat src;
@@ -1088,4 +1122,5 @@ void SaveDEM(DMAP & dm,int FrNum,int ToFrNum)
 	//cvSaveImage(filename, saveImage);
 	imwrite(filename, src);
 	cvReleaseImage(&saveImage);
+	src.release();
 }

@@ -177,11 +177,11 @@ void ProcessOneFrame()
 	//DrawRangeView ();
 
 	//将全局DEM转换到当前车体坐标系下
-	PredictGloDem(gm, ggm);
-	printf("PredictGloDem completed\n");
+	//PredictGloDem(gm, ggm);
+	//printf("PredictGloDem completed\n");
 	//生成单帧数据的DEM
 	GenerateLocDem(dm);
-	printf("GenerateLocDem completed\n");
+	//printf("GenerateLocDem completed\n");
 
 	//用当前帧DEM更新全局DEM
 	//UpdateGloDem(gm, dm);
@@ -278,14 +278,14 @@ void DoProcessing()
 
 	InitRmap(&rm);
 	InitDmap(&dm);
-	InitDmap(&gm);
-	InitDmap(&ggm);
+	//InitDmap(&gm);
+	//InitDmap(&ggm);
 	onefrm = new ONEDSVFRAME[1];
 
-	IplImage * col = cvCreateImage(cvSize(1024, rm.len * 3), IPL_DEPTH_8U, 3);
+	//IplImage * col = cvCreateImage(cvSize(1024, rm.len * 3), IPL_DEPTH_8U, 3);
 
-	CvFont font;
-	cvInitFont(&font, CV_FONT_HERSHEY_DUPLEX, 1, 1, 0, 2);
+	//CvFont font;
+	//cvInitFont(&font, CV_FONT_HERSHEY_DUPLEX, 1, 1, 0, 2);
 
 	int waitkeydelay = 0;
 
@@ -303,9 +303,11 @@ void DoProcessing()
 		SaveDEM(dm, dFrmNo, dFrmNum);
 		//可视化
 		//		cvResize (rm.rMap, col);
+		/*
 		char str[10];
 		sprintf(str, "Fno%d", dFrmNo);
 		cvPutText(dm.lmap, str, cvPoint(50, 50), &font, CV_RGB(0, 0, 255));
+		*/
 		//		cvShowImage("range image",col);
 		//		cvResize (rm.lMap, col);
 		//		cvShowImage("region",col);
@@ -332,9 +334,9 @@ void DoProcessing()
 
 	ReleaseRmap(&rm);
 	ReleaseDmap(&dm);
-	ReleaseDmap(&gm);
-	ReleaseDmap(&ggm);
-	cvReleaseImage(&col);
+	//ReleaseDmap(&gm);
+	//ReleaseDmap(&ggm);
+	//cvReleaseImage(&col);
 	delete[]onefrm;
 }
 
