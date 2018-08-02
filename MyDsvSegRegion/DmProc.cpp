@@ -1,5 +1,4 @@
 ﻿#include "define.h"
-
 void DrawDem(DMAP &m)
 {
 	if (m.lab) {
@@ -161,13 +160,15 @@ void CopyGloDem(DMAP *tar, DMAP *src)
 	if (!tar->heightVariance) tar->heightVariance = new double[tar->wid*tar->len];
 	memcpy(tar->heightVariance, src->heightVariance, sizeof(double)*src->wid*src->len);
 
-	if (!tar->ptsHeight) tar->ptsHeight = new double *[tar->wid*tar->len];
-	for (int i = 0; i < tar->wid*tar->len; ++i)
-	{
-		tar->ptsHeight[i] = new double[MAX_PTS_PER_GRID];
-		if (!tar->ptsHeight[i])
-			printf("No memory\n");
-		memset(tar->ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+	if (!tar->ptsHeight) {
+		tar->ptsHeight = new double *[tar->wid*tar->len];
+		for (int i = 0; i < tar->wid*tar->len; ++i)
+		{
+			tar->ptsHeight[i] = new double[MAX_PTS_PER_GRID];
+			if (!tar->ptsHeight[i])
+				printf("No memory\n");
+			memset(tar->ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+		}
 	}
 	for (int i = 0; i < tar->wid*tar->len; ++i)
 	{
@@ -198,7 +199,13 @@ void ZeroGloDem(DMAP *m)
 	/*以下部分处理新加入的features*/
 	memset(m->meanHeight, 0, sizeof(double)*m->wid*m->len);
 	memset(m->heightVariance, 0, sizeof(double)*m->wid*m->len);
+	memset(m->demnum, 0, sizeof(int)*m->wid*m->len);
 	memset(m->visible, 0, sizeof(bool)*m->wid*m->len);
+
+	for (int i = 0; i < m->wid*m->len; ++i)
+	{
+		memset(m->ptsHeight[i], 0, sizeof(double) * MAX_PTS_PER_GRID);
+	}
 }
 
 void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
@@ -218,8 +225,10 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 	gmtar.trans.shv.x = onefrm->dsv[0].shv.x;
 	gmtar.trans.shv.y = onefrm->dsv[0].shv.y;
 
+	/*
 	printf("global trans ang: %lf\n", gmtar.trans.ang);
 	printf("gloabl trans shv: (%lf , %lf) \n", gmtar.trans.shv.x,gmtar.trans.shv.y);
+	*/
 
 	//estimation for transformation
 	MAT2D	rot1, rot2;
@@ -241,8 +250,10 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 	shv.x = gmtmp.trans.shv.x - gmtar.trans.shv.x;
 	shv.y = gmtmp.trans.shv.y - gmtar.trans.shv.y;
 
-	printf("trans ang: %lf\n", gmtar.trans.ang);
+	/*printf("trans ang: %lf\n", gmtar.trans.ang);
 	printf("trans shv: (%lf , %lf) \n",shv.x, shv.y);
+	*/
+
 	//transform from the frame of gmtmp to gmtar
 	int x, y;
 	for (y = 0; y<gmtmp.len; y++) {
@@ -291,6 +302,8 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 
 						gmtar.lab[yy*gmtar.wid + xx] = gmtmp.lab[y*gmtmp.wid + x];
 						gmtar.lpr[yy*gmtar.wid + xx] = gmtmp.lpr[y*gmtmp.wid + x] * fac;
+
+
 						/*以下部分处理新加入的features*/
 						gmtar.demnum[yy*gmtar.wid + xx] = gmtmp.demnum[y*gmtmp.wid + x];
 						gmtar.meanHeight[yy*gmtar.wid + xx] = gmtmp.meanHeight[y*gmtmp.wid + x];
@@ -310,6 +323,8 @@ void PredictGloDem(DMAP &gmtar, DMAP &gmtmp)
 							gmtar.demhmax[yy*gmtar.wid + xx] = gmtmp.demhmax[y*gmtmp.wid + x];
 							gmtar.demhnum[yy*gmtar.wid + xx] = gmtmp.demhnum[y*gmtmp.wid + x];
 						}
+
+
 						/*以下部分处理新加入的features*/
 						gmtar.demnum[yy*gmtar.wid + xx] = gmtmp.demnum[y*gmtmp.wid + x];
 						gmtar.meanHeight[yy*gmtar.wid + xx] = gmtmp.meanHeight[y*gmtmp.wid + x];
@@ -347,8 +362,9 @@ void UpdateGloDem(DMAP &glo, DMAP &loc)
 	int dx, dy;
 	for (dy = 0; dy<loc.len; dy++) {
 		for (dx = 0; dx<loc.wid; dx++) {
-			if (!loc.lab[dy*loc.wid + dx])
+			/*if (!loc.lab[dy*loc.wid + dx])
 				continue;
+			*/
 
 			int gx, gy;
 			gx = dx - loc.wid / 2 + glo.wid / 2;
@@ -400,7 +416,7 @@ void UpdateGloDem(DMAP &glo, DMAP &loc)
 					loc.meanHeight[dy*loc.wid + dx] * loc.demnum[dy*loc.wid + dx]) /
 					(double)(glo.demnum[gy*glo.wid + gx] + loc.demnum[dy*loc.wid + dx]);
 				*/
-				int tmp = glo.demgnum[gy*glo.wid + gx];
+				int tmp = glo.demnum[gy*glo.wid + gx];
 				glo.demnum[gy*glo.wid + gx] = min(MAX_PTS_PER_GRID, glo.demnum[gy*glo.wid + gx] + loc.demnum[dy*loc.wid + dx]);
 				
 				double *pts = new double[glo.demnum[gy*glo.wid + gx]];
@@ -435,16 +451,18 @@ void UpdateGloDem(DMAP &glo, DMAP &loc)
 			}
 			else if (loc.demnum[dy*loc.wid + dx]) {
 				glo.meanHeight[gy*glo.wid + gx] = loc.meanHeight[dy*loc.wid + dx];
+				glo.heightVariance[gy*glo.wid + gx] = loc.heightVariance[dy* loc.wid + dx];
 				glo.demnum[gy*glo.wid + gx] = loc.demnum[dy*loc.wid + dx];
 				for (int i = 0; i < glo.demnum[gy*glo.wid + gx]; ++i)
 					glo.ptsHeight[gy*glo.wid + gx][i] = loc.ptsHeight[dy*loc.wid + dx][i];
+
 				glo.visible[gy*glo.wid + gx] = 1;
 			}
 		}
 	}
 }
 
-void GenerateLocDem(DMAP &loc)
+void GenerateLocDem(DMAP &loc,int dFrmNo)
 {
 	int x, y;
 
@@ -494,10 +512,10 @@ void GenerateLocDem(DMAP &loc)
 
 	for (int ry = 0; ry<rm.len; ry++) {
 		for (int rx = 0; rx<rm.wid; rx++) {
-
+			/*
 			if (!rm.pts[ry*rm.wid + rx].i)
 				continue;
-
+			*/
 			point3fi *p = &rm.pts[ry*rm.wid + rx];
 
 			bool isroad;
@@ -547,7 +565,7 @@ void GenerateLocDem(DMAP &loc)
 					if(loc.demnum[y*loc.wid + x]<=MAX_PTS_PER_GRID)
 						loc.ptsHeight[y*loc.wid + x][loc.demnum[y*loc.wid + x] - 1] = p->z;
 					loc.meanHeight[y*loc.wid + x] += p->z;
-					loc.visible[y*loc.wid + x] = 1;
+					//loc.visible[y*loc.wid + x] = 1;
 				}
 			}
 		}
@@ -669,10 +687,79 @@ void GenerateLocDem(DMAP &loc)
 			}
 		}
 	}
+
 	loc.trans.ang = onefrm->dsv[0].ang.z;
 	loc.trans.shv.x = onefrm->dsv[0].shv.x;
 	loc.trans.shv.y = onefrm->dsv[0].shv.y;
 	loc.dataon = true;
+
+
+	//以下部分处理轨迹
+	
+	FILE *fp = fopen("E:/实验室/MyDsvSegRegion/x64/Debug/nav.txt", "r");
+	char filename[60];
+	//for PIC_SIZE = 200
+	sprintf(filename, "E:/Data-nav/nav-%d.txt", dFrmNo);
+	//for PIC_SIZE = 100
+	//sprintf(filename, "E:/Data-nav-small/nav-%d.txt", dFrmNo);
+	FILE *fout = fopen(filename, "w");
+	if (!fp)
+	{
+		printf("cannot open file nav.txt\n");
+		return;
+	}
+	if (!fout)
+	{
+		printf("cannot output file\n");
+		return;
+	}
+
+	double ang,shv_x,shv_y;
+	int num;
+	for (int i = 0; i <= dFrmNo; ++i)
+	{
+		fscanf(fp, "%d %lf %lf %lf\n", &num, &ang, &shv_x, &shv_y);
+	}
+	point2d shv;
+	MAT2D rot2;
+	while (1) 
+	{
+		
+		if(fscanf(fp, "%d %lf %lf %lf\n", &num, &ang, &shv_x, &shv_y)!=4)
+			break;
+		//下面的步骤是必要的，trans中的shv是全局坐标系（世界坐标系），需要把位移转换到车体坐标系下
+		shv.x = shv_x - loc.trans.shv.x;
+		shv.y = shv_y - loc.trans.shv.y;
+		double aa = (loc.trans.ang + 8.0 /180.0 * M_PI);
+		rot2[0][0] = cos(-aa);
+		rot2[0][1] = -sin(-aa);
+		rot2[1][0] = sin(-aa);
+		rot2[1][1] = cos(-aa);
+
+		rotatePoint2d(shv, rot2);
+
+
+		int dx = (shv.x) / PIXSIZ;
+		int dy = (shv.y) / PIXSIZ;
+
+		if (dx == 0 && dy == 0)
+			continue;
+		int xx = loc.wid / 2 + dx;
+		int yy = loc.len / 2 + dy;
+		if (xx - loc.wid / 2 >= PIC_SIZE /2 || xx - loc.wid / 2 <= -PIC_SIZE/2)
+		
+			break;
+		//假定车往上开
+		//if (yy - loc.len / 2 >= 0 || yy - loc.len / 2 <= -200)
+		//	break;
+		if (yy - loc.len / 2 <= 0 || yy - loc.len / 2 >= PIC_SIZE)
+			break;
+		//if(loc.demnum[yy*loc.wid + xx])
+			fprintf(fout, "%d %d\n", xx, yy);
+		
+	}
+	fclose(fp);
+	fclose(fout);
 }
 
 void InitDmap(DMAP *dm)
@@ -1079,17 +1166,21 @@ void ExtractRoadCenterline(DMAP &glo)
 
 void SaveDEM(DMAP & dm,int FrNum,int ToFrNum)
 {
-	IplImage* saveImage = cvCreateImage(cvSize(200, 200), IPL_DEPTH_8U, 3);
+	IplImage* saveImage = cvCreateImage(cvSize(PIC_SIZE, PIC_SIZE), IPL_DEPTH_8U, 3);
 
 	cvZero(saveImage);
 
 	int x, y;
 	double max_meanHeight = 0;
 	double max_HeightVariance = 0;
+	/*
+	 * 这是取车辆前方2.5m正前方的50m*50m的正方形区域
+	 */
+	/*
 	int x_st = (dm.wid - 200) / 2 ;
 	int x_ed = dm.wid - (dm.wid - 200) / 2 - 1 ;
-	for(y=0;y<200;++y)
-		for (x = x_st; x <=x_ed; ++x)
+	for (y = 0; y<200; ++y)
+		for (x = x_st; x <= x_ed; ++x)
 		{
 			if (dm.visible[y*dm.wid + x] && dm.meanHeight[y*dm.wid + x] != INVALIDDOUBLE)
 			{
@@ -1097,28 +1188,108 @@ void SaveDEM(DMAP & dm,int FrNum,int ToFrNum)
 				max_HeightVariance = max(dm.heightVariance[y*dm.wid + x], max_HeightVariance);
 			}
 		}
-	for(y=0;y<200;++y)
-		for (x = x_st; x <=x_ed; ++x)
+	for (y = 0; y<200; ++y)
+		for (x = x_st; x <= x_ed; ++x)
 		{
 			if (dm.visible[y*dm.wid + x])
 			{	//第一个通道存mean height
-				saveImage->imageData[(y*PIC_SIZE+ x-x_st) * 3] = (int)((dm.meanHeight[y*dm.wid + x] / max_meanHeight) * 255);
+				saveImage->imageData[(y*PIC_SIZE + x - x_st) * 3] = (int)((dm.meanHeight[y*dm.wid + x] / max_meanHeight) * 255);
 				//第二个通道存heigth variance
-				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 1] = (int)((dm.heightVariance[y*dm.wid + x] / max_HeightVariance) * 255);
+				saveImage->imageData[(y*PIC_SIZE + x - x_st) * 3 + 1] = (int)((dm.heightVariance[y*dm.wid + x] / max_HeightVariance) * 255);
 				//第三个通道存可见度
-				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 2] = 255;
+				saveImage->imageData[(y*PIC_SIZE + x - x_st) * 3 + 2] = 255;
 			}
 			else
 			{
-				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3] = 0;
-				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 1] = 0;
-				saveImage->imageData[(y*PIC_SIZE + x-x_st) * 3 + 2] = 0;
+				saveImage->imageData[(y*PIC_SIZE + x - x_st) * 3] = 0;
+				saveImage->imageData[(y*PIC_SIZE + x - x_st) * 3 + 1] = 0;
+				saveImage->imageData[(y*PIC_SIZE + x - x_st) * 3 + 2] = 0;
+			}
+		}
+		*/
+	/*
+	 * 这是取包含车辆前半部分（车头及部分车身）的正前方50m*50m的正方形区域  (假定车往上开)
+	 */
+	/*
+	int x_st = (dm.wid - 200) / 2;
+	int x_ed = dm.wid - (dm.wid - 200) / 2 - 1;
+
+	int y_st = dm.len / 2 - 200;
+	int y_ed = dm.len / 2 - 1;
+
+	for (y = y_st; y<= y_ed; ++y)
+		for (x = x_st; x <= x_ed; ++x)
+		{
+			if (dm.visible[y*dm.wid + x] && dm.meanHeight[y*dm.wid + x] != INVALIDDOUBLE)
+			{
+				max_meanHeight = max(dm.meanHeight[y*dm.wid + x], max_meanHeight);
+				max_HeightVariance = max(dm.heightVariance[y*dm.wid + x], max_HeightVariance);
+			}
+		}
+	for (y = y_st; y<= y_ed; ++y)
+		for (x = x_st; x <= x_ed; ++x)
+		{
+			if (dm.visible[y*dm.wid + x])
+			{	//第一个通道存mean height
+				saveImage->imageData[((y-y_st)*PIC_SIZE + x - x_st) * 3] = (int)((dm.meanHeight[y*dm.wid + x] / max_meanHeight) * 255);
+				//第二个通道存heigth variance
+				saveImage->imageData[((y-y_st)*PIC_SIZE + x - x_st) * 3 + 1] = (int)((dm.heightVariance[y*dm.wid + x] / max_HeightVariance) * 255);
+				//第三个通道存可见度
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3 + 2] = 255;
+			}
+			else
+			{
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3] = 0;
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3 + 1] = 0;
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3 + 2] = 0;
+			}
+		}
+	*/
+
+	//假定车往下开
+	int x_st = (dm.wid - PIC_SIZE) / 2;
+	int x_ed = dm.wid - (dm.wid - PIC_SIZE) / 2 - 1;
+
+	int y_st = dm.len / 2 ;
+	int y_ed = dm.len / 2 + PIC_SIZE - 1;
+
+	for (y = y_st; y <= y_ed; ++y)
+		for (x = x_st; x <= x_ed; ++x)
+		{
+			if (dm.visible[y*dm.wid + x] && dm.meanHeight[y*dm.wid + x] != INVALIDDOUBLE)
+			{
+				max_meanHeight = max(dm.meanHeight[y*dm.wid + x], max_meanHeight);
+				max_HeightVariance = max(dm.heightVariance[y*dm.wid + x], max_HeightVariance);
+			}
+		}
+	for (y = y_st; y <= y_ed; ++y)
+		for (x = x_st; x <= x_ed; ++x)
+		{
+			if (dm.visible[y*dm.wid + x])
+			{	//第一个通道存mean height
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3] = (int)((dm.meanHeight[y*dm.wid + x] / max_meanHeight) * 255);
+				//第二个通道存heigth variance
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3 + 1] = (int)((dm.heightVariance[y*dm.wid + x] / max_HeightVariance) * 255);
+				//第三个通道存可见度
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3 + 2] = 255;
+			}
+			else
+			{
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3] = 0;
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3 + 1] = 0;
+				saveImage->imageData[((y - y_st)*PIC_SIZE + x - x_st) * 3 + 2] = 0;
 			}
 		}
 	char filename[60];
 	Mat src;
 	src = cvarrToMat(saveImage);
-	sprintf(filename, "E:\\Data\\dem-%.6d-of-%.6d.jpg", FrNum, ToFrNum);
+	//for PIC_SIZE = 200
+	//sprintf(filename, "E:\\Data-Car-Head\\dem-%.4d.jpg", FrNum, ToFrNum);
+	sprintf(filename, "E:\\Data-Car-Head\\dem-%.4d.jpg", FrNum, ToFrNum);
+
+	//for PIC_SIZE = 100
+	//sprintf(filename, "E:\\Data-Car-Head-Small\\dem-%.4d.jpg", FrNum, ToFrNum);
+
 	//cvSaveImage(filename, saveImage);
 	imwrite(filename, src);
 	cvReleaseImage(&saveImage);

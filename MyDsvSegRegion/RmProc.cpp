@@ -66,9 +66,9 @@ void GenerateRangeView()
 		for (int j = 0; j<LINES_PER_BLK; j++) {
 			for (int k = 0; k<PNTS_PER_LINE; k++) {
 				point3fi *p = &onefrm->dsv[i].points[j*PNTS_PER_LINE + k];
-				if (!p->i)
+				/*if (!p->i)
 					continue;
-
+				*/
 				float rng = sqrt(sqr(p->x) + sqr(p->y) + sqr(p->z));
 				float angv = asin(p->z / rng);
 				float angh = atan2(p->y, p->x);

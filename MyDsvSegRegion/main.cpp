@@ -148,7 +148,7 @@ void CorrectPoints()
 	}
 }
 
-void ProcessOneFrame()
+void ProcessOneFrame(int dFrmNo)
 {
 	//生成距离图像帧
 	GenerateRangeView();
@@ -180,7 +180,7 @@ void ProcessOneFrame()
 	//PredictGloDem(gm, ggm);
 	//printf("PredictGloDem completed\n");
 	//生成单帧数据的DEM
-	GenerateLocDem(dm);
+	GenerateLocDem(dm,dFrmNo);
 	//printf("GenerateLocDem completed\n");
 
 	//用当前帧DEM更新全局DEM
@@ -298,7 +298,7 @@ void DoProcessing()
 			printf("%d (%d)\n", dFrmNo, dFrmNum);
 
 		//每一帧的处理
-		ProcessOneFrame();
+		ProcessOneFrame(dFrmNo);
 
 		SaveDEM(dm, dFrmNo, dFrmNum);
 		//可视化

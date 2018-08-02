@@ -185,7 +185,7 @@ typedef struct {
 							//（前一条扫描线为与车体更近的那条，两扫描线间角度d_ang=(VMAXANG-VMINANG)/63)
 } CENTERLN;
 /*以下部分处理新加入的features*/
-#define MAX_PTS_PER_GRID 2000
+#define MAX_PTS_PER_GRID 1000
 #define PIC_SIZE 200
 typedef struct {
 	int				wid;			//DEM宽、像素数
@@ -294,7 +294,7 @@ void InitDmap(DMAP *dm);
 void ReleaseDmap(DMAP *dm);
 void PredictGloDem(DMAP &gmtar, DMAP &gmtmp);
 void UpdateGloDem(DMAP &glo, DMAP &loc);
-void GenerateLocDem(DMAP &loc);
+void GenerateLocDem(DMAP &loc,int dFrmNo);
 void CallbackLocDem(int event, int x, int y, int flags, void *ustc);
 void LabelRoadSurface(DMAP &glo);
 void LabelObstacle(DMAP &glo);
