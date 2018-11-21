@@ -186,7 +186,7 @@ typedef struct {
 } CENTERLN;
 /*以下部分处理新加入的features*/
 #define MAX_PTS_PER_GRID 1000
-#define PIC_SIZE 200
+#define PIC_SIZE 100
 typedef struct {
 	int				wid;			//DEM宽、像素数
 	int				len;			//DEM长、像素数
@@ -217,7 +217,8 @@ typedef struct {
 
 	double			*meanHeight;	// 每一个栅格的平均高度
 	
-	double			**ptsHeight;	// 用于存储打在每一个栅格中的激光点的高度序列
+	// 采用增量计算后，不需要存储每一个激光点的高度了！！
+	//double			**ptsHeight;	// 用于存储打在每一个栅格中的激光点的高度序列
 	double			*heightVariance;// 每一个栅格的方差
 	int				*demnum;		// 每一个栅格的激光点数
 	bool			*visible;		// 可见性（待定）
